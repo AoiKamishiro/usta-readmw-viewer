@@ -1,7 +1,7 @@
 {
   "name": "jp.co.u-stella.readmeviewer",
   "displayName": "U-Stella ReadmeViewer",
-  "version": "0.0.0",
+  "version": "0.0.1-alpha1",
   "unity": "2022.3",
   "unityRelease": "22f1",
   "description": "This is an asset that displays the Readme on the Unity inspector.",
