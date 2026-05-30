@@ -1,12 +1,9 @@
 ﻿//Created by UnityTechnologies
 //Modified by AoiKamishiro
 
-
-using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
-using Math = System.Math;
+using UnityEngine.UIElements;
 
 namespace USTL.ReadmeViewer.Editor
 {
@@ -14,12 +11,9 @@ namespace USTL.ReadmeViewer.Editor
     [CustomEditor(typeof(ReadmeAsset))]
     public class ReadmeAssetEditor : UnityEditor.Editor
     {
-        /// <summary>
-        ///     初期化処理を行います。
-        /// </summary>
         static ReadmeAssetEditor()
         {
-            EditorApplication.delayCall += SelectReadmeAutomatically;
+            AssetDatabase.importPackageCompleted += _ => SelectReadmeAutomatically();
         }
 
         private void OnEnable()
@@ -28,305 +22,215 @@ namespace USTL.ReadmeViewer.Editor
             readme._cachedIcon = null;
         }
 
-        /// <summary>
-        ///     アセットの中からReadmeAssetを自動的に選択します。
-        /// </summary>
         private static void SelectReadmeAutomatically()
         {
-            //アセットに含まれるすべてのReadmeAssetのうち、まだ読み込まれていない物を取得
-            IEnumerable<ReadmeAsset> readmes = FindAssetsByType<ReadmeAsset>().Where(x => !x.isLoaded);
-
-            //一つもなければ終了
-            if (!readmes.Any())
+            foreach (string guid in AssetDatabase.FindAssets($"t:{nameof(ReadmeAsset)}"))
             {
-                return;
-            }
-
-            //取得したうちの一つに"読み込み済み"の目印を立てて、選択する
-            ReadmeAsset readme = readmes.First();
-            readme.isLoaded = true;
-            EditorUtility.SetDirty(readme);
-            Selection.objects = new Object[] { readme, };
-        }
-
-        /// <summary>
-        ///     インスペクターの表題の表示を行います
-        /// </summary>
-        protected override void OnHeaderGUI()
-        {
-            ReadmeAsset readme = (ReadmeAsset)target;
-
-            float iconWidth = Mathf.Min(EditorGUIUtility.currentViewWidth / 3f - 20f, readme.iconMaxWidth);
-
-            GUILayout.BeginHorizontal("In BigTitle");
-            {
-                GUILayout.Label(readme.Icon, GUILayout.Width(iconWidth), GUILayout.Height(iconWidth));
-                IconRect = GUILayoutUtility.GetLastRect();
-                GUILayout.Label(readme.title, TitleStyle);
-                LabelRect = GUILayoutUtility.GetLastRect();
-
-                if (readme.showEditButton)
-                {
-                    ButtonRect = new Rect(EditorGUIUtility.currentViewWidth - 52 - 10, Math.Max(IconRect.y + IconRect.height, LabelRect.y + LabelRect.height) - 16, 52, 16);
-                    if (GUI.Button(ButtonRect, new GUIContent("Edit"), EditorStyles.miniButton))
-                    {
-                        ReadmeAssetEditorWindow.OpenEditor(readme);
-                    }
-                }
-            }
-            GUILayout.EndHorizontal();
-        }
-
-        /// <summary>
-        ///     インスペクターの内容の表示を行います
-        /// </summary>
-        public override void OnInspectorGUI()
-        {
-            ReadmeAsset readme = (ReadmeAsset)target;
-
-            GUILayout.Space(space / 2);
-
-            //章が存在しない場合、そこで終了
-            if (readme.chapters == null || readme.chapters.Length == 0)
-            {
-                return;
-            }
-
-            //章の反復処理
-            foreach (ReadmeAsset.Chapter chapter in readme.chapters)
-            {
-                GUILayout.Space(space / 2);
-
-                //章の表題を表示
-                if (!string.IsNullOrEmpty(chapter.chapterTitle))
-                {
-                    Label(chapter.chapterTitle, ChapterTitleStyle);
-                }
-
-                //章の本文を表示
-                if (!string.IsNullOrEmpty(chapter.chapterText))
-                {
-                    Label(chapter.chapterText, ChapterTextStyle);
-                }
-
-                //節が存在しない場合、そこで現在の章を終了
-                if (chapter.sections == null || chapter.sections.Length == 0)
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                if (AssetDatabase.GetMainAssetTypeAtPath(path) != typeof(ReadmeAsset))
                 {
                     continue;
                 }
 
-                //節の反復処理
-                foreach (ReadmeAsset.Section section in chapter.sections)
+                ReadmeAsset asset = AssetDatabase.LoadAssetAtPath<ReadmeAsset>(path);
+                if (!asset || asset.isLoaded)
                 {
-                    GUILayout.Space(space / 4);
-
-                    //節の表題を表示
-                    if (!string.IsNullOrEmpty(section.sectionTitle))
-                    {
-                        Label(section.sectionTitle, SectionTitleStyle);
-                    }
-
-                    //文が存在しない場合、そこで現在の節を終了
-                    if (section.sentences == null || section.sentences.Length == 0)
-                    {
-                        continue;
-                    }
-
-                    //文の反復処理
-                    foreach (ReadmeAsset.Sentence line in section.sentences)
-                    {
-                        //文が空行の場合、そこで現在の文を終了
-                        if (string.IsNullOrEmpty(line.text))
-                        {
-                            continue;
-                        }
-
-                        using (new GUILayout.HorizontalScope())
-                        {
-                            //指定された文字数の字下げを行う
-                            GUILayout.Space(line.indent * tab);
-
-                            //文が参照文であれば、参照先を開けるように表示
-                            if (line.isLink)
-                            {
-                                LinkLabel(line.text, line.url, LinkStyle);
-                            }
-                            //そうでなければ単純に文を表示
-                            else
-                            {
-                                Label(line.text, LineStyle);
-                            }
-                        }
-                    }
+                    continue;
                 }
 
-                GUILayout.Space(space);
+                asset.isLoaded = true;
+                EditorUtility.SetDirty(asset);
+                AssetDatabase.SaveAssets();
+                AssetDatabase.Refresh();
+                Selection.activeObject = asset;
             }
         }
 
-        /// <summary>
-        ///     文の表示の処理を行います。
-        /// </summary>
-        /// <param name="text">表示文</param>
-        /// <param name="style">参照先</param>
-        /// <param name="options">書式</param>
-        private static void Label(string text, GUIStyle style, params GUILayoutOption[] options)
+        protected override void OnHeaderGUI()
         {
-            GUILayout.Label(text, style, options);
         }
 
-        /// <summary>
-        ///     参照文の表示と、参照先を開く処理を行います。
-        /// </summary>
-        /// <param name="text">表示文</param>
-        /// <param name="url">参照先</param>
-        /// <param name="style">書式</param>
-        /// <param name="options">オプション</param>
-        private static void LinkLabel(string text, string url, GUIStyle style, params GUILayoutOption[] options)
+        public override VisualElement CreateInspectorGUI()
         {
-            GUIContent label = new(text);
-            Rect position = GUILayoutUtility.GetRect(label, style, options);
+            ReadmeAsset readme = (ReadmeAsset)target;
 
-            Handles.BeginGUI();
-            Handles.color = style.normal.textColor;
-            Handles.DrawLine(new Vector3(position.xMin, position.yMax), new Vector3(position.xMax, position.yMax));
-            Handles.color = Color.white;
-            Handles.EndGUI();
+            VisualElement root = new();
+            root.style.paddingLeft = 4f;
+            root.style.paddingRight = 4f;
+            root.style.paddingBottom = Space;
 
-            EditorGUIUtility.AddCursorRect(position, MouseCursor.Link);
+            root.Add(CreateHeader(readme));
 
-            if (GUI.Button(position, label, style))
+            if (readme.chapters == null || readme.chapters.Length == 0)
             {
-                Application.OpenURL(url);
+                return root;
             }
+
+            root.Add(CreateDivider());
+
+            foreach (ReadmeAsset.Chapter chapter in readme.chapters)
+            {
+                root.Add(CreateChapter(chapter));
+            }
+
+            return root;
         }
 
         /// <summary>
-        ///     アセットの中から指定された型に属する物の一覧を返します。
+        ///     インスペクターの表題を構築します。
         /// </summary>
-        /// <typeparam name="T">探したい型</typeparam>
-        /// <returns>指定された型に属する物の一覧</returns>
-        private static IEnumerable<T> FindAssetsByType<T>() where T : Object
+        private static VisualElement CreateHeader(ReadmeAsset readme)
         {
-            IEnumerable<T> assets = AssetDatabase.FindAssets($"t:{typeof(T).FullName}").SelectMany(x => AssetDatabase.LoadAllAssetsAtPath(x)).Where(x => x is T).Select(x => (T)x);
-            return assets;
+            VisualElement header = new();
+            header.style.flexDirection = FlexDirection.Row;
+            header.style.alignItems = Align.Center;
+            header.style.marginTop = Space / 2f;
+            header.style.marginBottom = Space / 2f;
+
+            if (readme.Icon)
+            {
+                Image icon = new()
+                {
+                    image = readme.Icon,
+                    scaleMode = ScaleMode.ScaleToFit,
+                };
+                icon.style.width = readme.iconMaxWidth;
+                icon.style.height = readme.iconMaxWidth;
+                icon.style.maxWidth = readme.iconMaxWidth;
+                icon.style.maxHeight = readme.iconMaxWidth;
+                icon.style.flexShrink = 1f;
+                icon.style.marginRight = 12f;
+                header.Add(icon);
+            }
+
+            Label title = CreateLabel(readme.title, TitleFontSize, FontStyle.Normal);
+            title.style.flexGrow = 1f;
+            title.style.flexShrink = 1f;
+            header.Add(title);
+
+            return header;
         }
+
+        private static VisualElement CreateDivider()
+        {
+            VisualElement divider = new();
+            divider.style.height = 1f;
+            divider.style.marginBottom = Space / 2f;
+            divider.style.flexShrink = 0f;
+            divider.style.backgroundColor = DividerColor;
+            return divider;
+        }
+
+        private static VisualElement CreateChapter(ReadmeAsset.Chapter chapter)
+        {
+            VisualElement chapterElement = new();
+            chapterElement.style.marginTop = Space / 2f;
+            chapterElement.style.marginBottom = Space;
+
+            if (!string.IsNullOrEmpty(chapter.chapterTitle))
+            {
+                chapterElement.Add(CreateLabel(chapter.chapterTitle, ChapterTitleFontSize, FontStyle.Bold));
+            }
+
+            if (!string.IsNullOrEmpty(chapter.chapterText))
+            {
+                chapterElement.Add(CreateLabel(chapter.chapterText, ChapterTextFontSize, FontStyle.Normal));
+            }
+
+            if (chapter.sections == null || chapter.sections.Length == 0)
+            {
+                return chapterElement;
+            }
+
+            foreach (ReadmeAsset.Section section in chapter.sections)
+            {
+                chapterElement.Add(CreateSection(section));
+            }
+
+            return chapterElement;
+        }
+
+        private static VisualElement CreateSection(ReadmeAsset.Section section)
+        {
+            VisualElement sectionElement = new();
+            sectionElement.style.marginTop = Space / 4f;
+
+            if (!string.IsNullOrEmpty(section.sectionTitle))
+            {
+                sectionElement.Add(CreateLabel(section.sectionTitle, SectionTitleFontSize, FontStyle.Bold));
+            }
+
+            if (section.sentences == null || section.sentences.Length == 0)
+            {
+                return sectionElement;
+            }
+
+            foreach (ReadmeAsset.Sentence sentence in section.sentences)
+            {
+                if (string.IsNullOrEmpty(sentence.text))
+                {
+                    continue;
+                }
+
+                sectionElement.Add(CreateSentence(sentence));
+            }
+
+            return sectionElement;
+        }
+
+        private static VisualElement CreateSentence(ReadmeAsset.Sentence sentence)
+        {
+            VisualElement sentenceElement = new();
+            sentenceElement.style.flexDirection = FlexDirection.Row;
+            sentenceElement.style.marginLeft = Mathf.Max(0, sentence.indent) * Tab;
+
+            sentenceElement.Add(sentence.isLink ? CreateLink(sentence.text, sentence.url) : CreateLabel(sentence.text, LineFontSize, FontStyle.Normal));
+
+            return sentenceElement;
+        }
+
+        private static Label CreateLink(string text, string url)
+        {
+            Label label = CreateLabel(text, LineFontSize, FontStyle.Normal);
+            label.style.color = LinkColor;
+            label.tooltip = url;
+            label.RegisterCallback<MouseUpEvent>(evt =>
+            {
+                if (evt.button != 0)
+                {
+                    return;
+                }
+
+                Application.OpenURL(url);
+                evt.StopPropagation();
+            });
+
+            return label;
+        }
+
+        private static Label CreateLabel(string text, int fontSize, FontStyle fontStyle)
+        {
+            Label label = new(text);
+            label.style.fontSize = fontSize;
+            label.style.unityFontStyleAndWeight = fontStyle;
+            label.style.whiteSpace = WhiteSpace.Normal;
+            label.style.flexGrow = 1f;
+            label.style.flexShrink = 1f;
+            return label;
+        }
+
 
         #region Properties/Fields
 
-        private Rect IconRect;
-        private Rect LabelRect;
-        private Rect ButtonRect;
-
-        private static readonly float space = 16f;
-        private static readonly int tab = 8;
-
-        private static GUIStyle m_LinkStyle;
-        private static GUIStyle m_TitleStyle;
-        private static GUIStyle m_ChapterTitleStyle;
-        private static GUIStyle m_ChapterTextStyle;
-        private static GUIStyle m_SectionTitleStyle;
-        private static GUIStyle m_LineStyle;
-
-        private static GUIStyle TitleStyle
-        {
-            get
-            {
-                if (m_TitleStyle == null)
-                {
-                    m_TitleStyle = new GUIStyle(ChapterTextStyle)
-                    {
-                        fontSize = 26,
-                    };
-                }
-
-                return m_TitleStyle;
-            }
-        }
-
-        private static GUIStyle ChapterTitleStyle
-        {
-            get
-            {
-                if (m_ChapterTitleStyle == null)
-                {
-                    m_ChapterTitleStyle = new GUIStyle(ChapterTextStyle)
-                    {
-                        fontSize = 18,
-                        fontStyle = FontStyle.Bold,
-                    };
-                }
-
-                return m_ChapterTitleStyle;
-            }
-        }
-
-        private static GUIStyle ChapterTextStyle
-        {
-            get
-            {
-                if (m_ChapterTextStyle == null)
-                {
-                    m_ChapterTextStyle = new GUIStyle(EditorStyles.label)
-                    {
-                        wordWrap = true,
-                        fontSize = 16,
-                    };
-                }
-
-                return m_ChapterTextStyle;
-            }
-        }
-
-        private static GUIStyle SectionTitleStyle
-        {
-            get
-            {
-                if (m_SectionTitleStyle == null)
-                {
-                    m_SectionTitleStyle = new GUIStyle(ChapterTextStyle)
-                    {
-                        fontSize = 14,
-                        fontStyle = FontStyle.Bold,
-                    };
-                }
-
-                return m_SectionTitleStyle;
-            }
-        }
-
-        private static GUIStyle LineStyle
-        {
-            get
-            {
-                if (m_LineStyle == null)
-                {
-                    m_LineStyle = new GUIStyle(ChapterTextStyle)
-                    {
-                        fontSize = 14,
-                    };
-                }
-
-                return m_LineStyle;
-            }
-        }
-
-        private static GUIStyle LinkStyle
-        {
-            get
-            {
-                if (m_LinkStyle == null)
-                {
-                    ColorUtility.TryParseHtmlString("#4F80F8", out Color color);
-                    m_LinkStyle = new GUIStyle(LineStyle);
-                    m_LinkStyle.normal.textColor = color;
-                    ;
-                    m_LinkStyle.stretchWidth = false;
-                }
-
-                return m_LinkStyle;
-            }
-        }
+        private const float Space = 16f;
+        private const int Tab = 8;
+        private const int TitleFontSize = 26;
+        private const int ChapterTitleFontSize = 18;
+        private const int ChapterTextFontSize = 16;
+        private const int SectionTitleFontSize = 14;
+        private const int LineFontSize = 14;
+        private static readonly Color DividerColor = new(0.5f, 0.5f, 0.5f, 0.35f);
+        private static readonly Color LinkColor = new(0.30980393f, 0.5019608f, 0.972549f);
 
         #endregion
     }

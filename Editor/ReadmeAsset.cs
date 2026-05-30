@@ -23,45 +23,12 @@ namespace USTL.ReadmeViewer.Editor
         {
             get
             {
-                if (!_cachedIcon)
+                if (!_cachedIcon && !string.IsNullOrEmpty(iconGUID))
                 {
                     _cachedIcon = AssetDatabase.LoadAssetAtPath<Texture2D>(AssetDatabase.GUIDToAssetPath(iconGUID));
                 }
 
                 return _cachedIcon;
-            }
-            set
-            {
-                iconGUID = AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(value));
-                _cachedIcon = Icon;
-            }
-        }
-
-        public int ChapterCount
-        {
-            get
-            {
-                if (chapters == null)
-                {
-                    return 0;
-                }
-
-                return chapters.Length;
-            }
-            set
-            {
-                if (value < 0)
-                {
-                    return;
-                }
-
-                Chapter[] newChapters = new Chapter[value];
-                for (int i = 0; i < Math.Min(value, ChapterCount); i++)
-                {
-                    newChapters[i] = chapters[i];
-                }
-
-                chapters = newChapters;
             }
         }
 
@@ -76,34 +43,6 @@ namespace USTL.ReadmeViewer.Editor
 
             //節の配列
             public Section[] sections;
-
-            public int SectionCount
-            {
-                get
-                {
-                    if (sections == null)
-                    {
-                        return 0;
-                    }
-
-                    return sections.Length;
-                }
-                set
-                {
-                    if (value < 0)
-                    {
-                        return;
-                    }
-
-                    Section[] newSections = new Section[value];
-                    for (int i = 0; i < Math.Min(value, SectionCount); i++)
-                    {
-                        newSections[i] = sections[i];
-                    }
-
-                    sections = newSections;
-                }
-            }
         }
 
         /// <summary>
@@ -117,34 +56,6 @@ namespace USTL.ReadmeViewer.Editor
 
             //文の配列
             public Sentence[] sentences;
-
-            public int SentenceCount
-            {
-                get
-                {
-                    if (sentences == null)
-                    {
-                        return 0;
-                    }
-
-                    return sentences.Length;
-                }
-                set
-                {
-                    if (value < 0)
-                    {
-                        return;
-                    }
-
-                    Sentence[] newSentences = new Sentence[value];
-                    for (int i = 0; i < Math.Min(value, SentenceCount); i++)
-                    {
-                        newSentences[i] = sentences[i];
-                    }
-
-                    sentences = newSentences;
-                }
-            }
         }
 
         /// <summary>

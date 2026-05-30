@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-package:
+    name: Validate package metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Validate package.json
+        run: |
+          jq -e '
+            .name == "jp.co.u-stella.readmeviewer"
+            and (.version | test("^[0-9]+\\.[0-9]+\\.[0-9]+([-+][0-9A-Za-z.-]+)?$"))
+            and (.unity == "2022.3")
+            and (.unityRelease == "22f1")
+            and (.vpmDependencies != null)
+          ' package.json
+
+      - name: Check required package files
+        run: |
+          test -f package.json
+          test -f LICENSE
+          test -d Editor
+          test -d Gizmos

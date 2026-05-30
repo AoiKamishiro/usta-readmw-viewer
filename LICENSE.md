@@ -1,1 +1,0 @@
-online.kamishiro.readmeinspector © 2022 AoiKamishiro

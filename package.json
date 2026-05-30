@@ -1,11 +1,13 @@
 {
   "name": "jp.co.u-stella.readmeviewer",
-  "author": "Kamishiro Technologies",
-  "version": "v1.1.14",
-  "displayName": "Readme Viewer",
+  "displayName": "U-Stella ReadmeViewer",
+  "version": "0.0.0",
+  "unity": "2022.3",
+  "unityRelease": "22f1",
   "description": "This is an asset that displays the Readme on the Unity inspector.",
-  "unity": "2019.4",
-  "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "2.0.2"
-  }
+  "author": {
+    "name": "U-Stella Inc.",
+    "url": "https://u-stella.co.jp/"
+  },
+  "vpmDependencies": {}
 }
